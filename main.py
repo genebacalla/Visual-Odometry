@@ -1,13 +1,11 @@
 import cv2
-
-
+import numpy as np
 
 class VisualOdometry:
     def __init__ (self):
-        self.blockSize = 2
-        self.ksize = 3
-        self.k = 0.04
-        self.threshold = 0.01
+        self.max_corners = 25
+        self.quality_level = 0.01
+        self.min_dst = 10
 
     def __preprocess (self, image):
 
@@ -16,27 +14,26 @@ class VisualOdometry:
 
         return img_gray
 
-    def detectCorners(self, frame):
-        
-        preprocessedImage = self.__preprocess(frame) 
-        dst = cv2.cornerHarris(preprocessedImage, self.blockSize, self.ksize, self.k)
-        norm_corners = cv2.normalize(dst, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        threshold = self.threshold * dst.max()
+    def __detectCorners(self, frame):
+        img_gray = self.__preprocess(frame)
+        corners = cv2.goodFeaturesToTrack(img_gray, self.max_corners, self.quality_level, self.min_dst)
+        corners = np.int0(corners)
 
-        return dst, threshold
+        return corners
     
     def drawCorners(self, frame):
-        frame_copy = frame.copy()
-        dst, thresh = self.detectCorners(frame)
-        
-        frame_copy[dst > thresh] = [0,0,255]
-        return frame_copy
+        corners = self.__detectCorners(frame)
+        for corner in corners:
+            x, y = corner.ravel()
+            cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
+
+        return frame
+
 
 
 corners = VisualOdometry()
 img = cv2.imread('check.jpg')
 img_corners = corners.drawCorners(img)
-
 cv2.imshow('corners', img_corners)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
